@@ -5,25 +5,114 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>FRC Scouting Schedule Generator</title>
     <style>
-        table, th, td {
-            border: 1px solid black;
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f4f4f4;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        .container {
+            background-color: #ffffff;
+            border-radius: 8px;
+            box-shadow: 0 0 15px rgba(0, 0, 0, 0.2);
+            padding: 20px 40px;
+            width: 400px;
+            max-height: 90vh; /* Limit the height to allow scrolling */
+            overflow-y: auto; /* Add vertical scrolling */
+        }
+
+        h1 {
+            text-align: center;
+            font-size: 24px;
+            color: #333;
+            margin-bottom: 20px;
+        }
+
+        .formStyle {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .formStyle label {
+            margin-bottom: 5px;
+            font-weight: bold;
+            color: #555;
+        }
+
+        .formStyle input, .formStyle select, .formStyle button {
+            margin-bottom: 15px;
+            padding: 8px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font-size: 16px;
+            width: 100%;
+        }
+
+        .formStyle button {
+            background-color: #4CAF50;
+            color: white;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        .formStyle button:hover {
+            background-color: #45a049;
+        }
+
+        table {
+            width: 100%;
+            margin-top: 20px;
             border-collapse: collapse;
-            padding: 10px;
+            border: 1px solid #ddd;
+            font-size: 16px;
+        }
+
+        table th, table td {
+            text-align: left;
+            padding: 12px;
+            border-bottom: 1px solid #ddd;
+        }
+
+        table th {
+            background-color: #f2f2f2;
+            color: #333;
+            font-weight: bold;
+        }
+
+        #scheduleOutput {
+            margin-top: 20px;
         }
     </style>
 </head>
 <body>
-    <h1>FRC Scouting Schedule Generator</h1>
-    <form id="scheduleForm">
-        <label for="numPeople">Number of People:</label>
-        <input type="number" id="numPeople" name="numPeople" required min="12" oninput="generateNameFields()"><br><br>
-        <div id="nameFields"></div>
-        <label for="numMatches">Number of Matches:</label>
-        <input type="number" id="numMatches" name="numMatches" required min="1"><br><br>
-        <button type="button" onclick="generateSchedule()">Generate Schedule</button>
-    </form>
-    <br>
-    <div id="scheduleOutput"></div>
+    <div class="container">
+        <h1>FRC Scouting Schedule Generator</h1>
+        <form id="scheduleForm" class="formStyle">
+            <label for="numPeople">Number of People:</label>
+            <input type="number" id="numPeople" name="numPeople" required min="6" oninput="generateNameFields()">
+
+            <label for="scoutingType">Scouting Type:</label>
+            <select id="scoutingType" name="scoutingType" required>
+                <option value="single">Single Scouting</option>
+                <option value="double">Double Scouting</option>
+            </select>
+
+            <div id="nameFields"></div>
+
+            <label for="numMatches">Number of Matches:</label>
+            <input type="number" id="numMatches" name="numMatches" required min="1">
+
+            <button type="button" onclick="generateSchedule()">Generate Schedule</button>
+        </form>
+
+        <div id="scheduleOutput"></div>
+    </div>
 
     <script>
         function generateNameFields() {
@@ -31,19 +120,16 @@
             const nameFieldsDiv = document.getElementById('nameFields');
             nameFieldsDiv.innerHTML = '';
             for (let i = 0; i < numPeople; i++) {
-                nameFieldsDiv.innerHTML += `<label for="name${i}">Name ${i + 1}:</label><input type="text" id="name${i}" name="name${i}" required><br><br>`;
+                nameFieldsDiv.innerHTML += `<label for="name${i}">Name ${i + 1}:</label><input type="text" id="name${i}" name="name${i}" required>`;
             }
         }
 
         function generateSchedule() {
             const numPeople = parseInt(document.getElementById('numPeople').value);
             const numMatches = parseInt(document.getElementById('numMatches').value);
+            const scoutingType = document.getElementById('scoutingType').value;
             const roles = ['Red 1', 'Red 2', 'Red 3', 'Blue 1', 'Blue 2', 'Blue 3'];
-
-            if (numPeople < 12) {
-                alert("The number of people should be at least 12.");
-                return;
-            }
+            const groupSize = 5; // Number of matches per group
 
             let names = [];
             for (let i = 0; i < numPeople; i++) {
@@ -51,34 +137,46 @@
             }
 
             let schedule = [];
+            let groupIndex = 0;
+
             for (let match = 0; match < numMatches; match++) {
+                if (match % groupSize === 0 && match !== 0) {
+                    groupIndex = (groupIndex + roles.length) % numPeople;
+                }
                 let matchSchedule = [];
                 for (let role = 0; role < roles.length; role++) {
-                    let person1Index = (match * roles.length * 2 + role * 2) % numPeople;
-                    let person2Index = (person1Index + 1) % numPeople;
-                    matchSchedule.push(`${names[person1Index]}, ${names[person2Index]}`);
+                    let person1Index = (groupIndex + role) % numPeople;
+                    if (scoutingType === 'double') {
+                        let person2Index = (person1Index + 1) % numPeople;
+                        matchSchedule.push(`${names[person1Index]}, ${names[person2Index]}`);
+                    } else {
+                        matchSchedule.push(`${names[person1Index]}`);
+                    }
                 }
                 schedule.push(matchSchedule);
             }
 
-            displaySchedule(schedule, roles);
+            displayScheduleGrouped(schedule, roles, groupSize);
         }
 
-        function displaySchedule(schedule, roles) {
-            let output = '<table><tr><th>Match</th>';
-            for (let role of roles) {
-                output += `<th>${role}</th>`;
+        function displayScheduleGrouped(schedule, roles, groupSize) {
+            let output = '<table><tr><th>Matches</th>';
+
+            for (let i = 0; i < schedule.length; i += groupSize) {
+                let matchRange = `${i + 1}-${Math.min(i + groupSize, schedule.length)}`;
+                output += `<th>${matchRange}</th>`;
             }
             output += '</tr>';
 
-            for (let match = 0; match < schedule.length; match++) {
-                output += `<tr><td>Match ${match + 1}</td>`;
-                for (let persons of schedule[match]) {
-                    output += `<td>${persons}</td>`;
+            for (let roleIndex = 0; roleIndex < roles.length; roleIndex++) {
+                output += `<tr><td>${roles[roleIndex]}</td>`;
+                for (let i = 0; i < schedule.length; i += groupSize) {
+                    output += `<td>${schedule[i][roleIndex]}</td>`;
                 }
                 output += '</tr>';
             }
             output += '</table>';
+
             document.getElementById('scheduleOutput').innerHTML = output;
         }
     </script>
